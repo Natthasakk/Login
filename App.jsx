@@ -4,7 +4,7 @@ import { Lock, User, Database, ArrowRight, Table, AlertCircle, LogOut, UserCircl
 // ==========================================
 // ⚠️ ส่วนที่ต้องแก้ไข (CONFIGURATION) ⚠️
 // ==========================================
-const GOOGLE_SCRIPT_URL = ""; 
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwecK0DWgd5dFJz8SMXE3_Y6v5efsyO_JFi6IHLUCEROoNAynQHgvSkm9hHOYQNOkuanw/exec"; 
 // ==========================================
 
 export default function App() {
