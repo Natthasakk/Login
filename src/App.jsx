@@ -1,21 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, User, Database, ArrowRight, Table, AlertCircle, LogOut, UserCircle } from 'lucide-react';
+import { Lock, User, Database, ArrowRight, Table, AlertCircle, LogOut, UserCircle, Loader2, RefreshCw } from 'lucide-react';
 
 // ==========================================
 // ⚠️ ส่วนที่ต้องแก้ไข (CONFIGURATION) ⚠️
 // ==========================================
-// นำ URL ที่ได้จากการ Deploy Google Apps Script มาวางแทนที่ช่องว่างข้างล่างนี้
-// ต้องเป็น URL ที่ลงท้ายด้วย /exec และตั้งค่า Deploy เป็น "Anyone" แล้ว
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz_VqXHaCIG2EL8tmnY98S4cZ24HeaAPuVDDTwAabho2PM1Q3njic1cBcKnZuvlYbANTQ/exec"; 
-// ตัวอย่าง: "https://script.google.com/macros/s/AKfycbx.../exec"
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwecK0DWgd5dFJz8SMXE3_Y6v5efsyO_JFi6IHLUCEROoNAynQHgvSkm9hHOYQNOkuanw/exec"; 
 // ==========================================
 
 export default function App() {
-  const [view, setView] = useState('login'); // login, dashboard
-  const [loading, setLoading] = useState(false);
+  const [view, setView] = useState('login'); 
+  const [loading, setLoading] = useState(false);     
+  const [dataLoading, setDataLoading] = useState(false); 
   const [error, setError] = useState('');
   
-  // State สำหรับฟอร์ม (ไม่ต้องมี scriptUrl แล้ว เพราะใช้ค่าคงที่ด้านบน)
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   
@@ -28,7 +25,6 @@ export default function App() {
     setError('');
     setLoading(true);
 
-    // ตรวจสอบว่าใส่ URL ในโค้ดหรือยัง
     if (!GOOGLE_SCRIPT_URL) {
       setError('⚠️ ยังไม่ได้ใส่ URL ในโค้ด: กรุณาแก้ไขบรรทัดที่ 8 ของไฟล์ App.jsx');
       setLoading(false);
@@ -53,14 +49,19 @@ export default function App() {
       if (result.status === 'success') {
         const userData = { name: result.name, username: username };
         setUser(userData);
+        
+        // ✅ แก้ไขจุดนี้: สั่งให้หมุนรอก่อนเปลี่ยนหน้าทันที
+        setDataLoading(true); 
         setView('dashboard');
+        
+        // แล้วค่อยดึงข้อมูล
         fetchData(userData.username); 
       } else {
         setError(result.message || 'เข้าสู่ระบบไม่สำเร็จ');
       }
     } catch (err) {
       console.error(err);
-      setError('เชื่อมต่อไม่ได้: ตรวจสอบ URL ในโค้ด หรือการตั้งค่า Deploy (ต้องเป็น Anyone)');
+      setError('เชื่อมต่อไม่ได้: ตรวจสอบ URL หรือ Internet');
     } finally {
       setLoading(false);
     }
@@ -71,6 +72,9 @@ export default function App() {
     const userToFetch = currentUsername || user?.username;
     if (!userToFetch || !GOOGLE_SCRIPT_URL) return;
 
+    // ตั้งค่า Loading เป็น true อีกรอบเพื่อความชัวร์ (กรณีปุ่ม Refresh)
+    setDataLoading(true); 
+    
     try {
       const response = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
@@ -86,6 +90,8 @@ export default function App() {
       }
     } catch (err) {
       console.error("Failed to fetch data", err);
+    } finally {
+      setDataLoading(false); // หยุดหมุนเมื่อเสร็จจริง
     }
   };
 
@@ -107,7 +113,7 @@ export default function App() {
             <div className="mx-auto bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mb-4 backdrop-blur-sm">
               <Database className="text-white w-8 h-8" />
             </div>
-            <h2 className="text-2xl font-bold text-white">ระบบสมาชิก (Private)</h2>
+            <h2 className="text-2xl font-bold text-white">ระบบสมาชิก</h2>
             <p className="text-indigo-200 text-sm mt-1">เข้าสู่ระบบเพื่อดูข้อมูลของคุณ</p>
           </div>
 
@@ -160,7 +166,10 @@ export default function App() {
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {loading ? (
-                <span className="animate-pulse">กำลังตรวจสอบ...</span>
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" /> 
+                  กำลังตรวจสอบ...
+                </>
               ) : (
                 <>
                   เข้าสู่ระบบ <ArrowRight className="w-5 h-5" />
@@ -212,14 +221,23 @@ export default function App() {
           </div>
           <button 
             onClick={() => fetchData(user?.username)}
-            className="text-sm text-indigo-600 hover:text-indigo-800 font-medium bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm hover:bg-gray-50 transition-all"
+            disabled={dataLoading}
+            className="text-sm text-indigo-600 hover:text-indigo-800 font-medium bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm hover:bg-gray-50 transition-all flex items-center gap-2"
           >
-            รีเฟรชข้อมูล
+             {dataLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+             รีเฟรชข้อมูล
           </button>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden min-h-[300px]">
-          {sheetData.length > 0 ? (
+          {dataLoading ? (
+            // ✅ ส่วนแสดงผลตอนกำลังโหลด (Loading State)
+            <div className="flex flex-col items-center justify-center h-[300px] text-gray-500">
+               <Loader2 className="w-10 h-10 animate-spin text-indigo-600 mb-3" />
+               <p className="font-medium">กำลังดึงข้อมูลจาก Google Sheets...</p>
+               <p className="text-xs text-gray-400 mt-1">กรุณารอสักครู่</p>
+            </div>
+          ) : sheetData.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -245,12 +263,17 @@ export default function App() {
               </table>
             </div>
           ) : (
+            // ✅ กรณีโหลดเสร็จแล้วแต่ไม่เจอข้อมูล
             <div className="flex flex-col items-center justify-center h-full p-12 text-center text-gray-400">
               <Table className="w-16 h-16 mb-4 opacity-20" />
-              <p className="text-lg font-medium text-gray-500">ไม่พบข้อมูลของคุณ</p>
-              <p className="text-sm mt-2 max-w-md">
-                กรุณาตรวจสอบว่าใน Sheet "Data" มีข้อมูลของ <b>"{user?.username}"</b> อยู่หรือไม่
-              </p>
+              <p className="text-lg font-medium text-gray-500">โหลดเสร็จแล้ว แต่ไม่พบข้อมูล</p>
+              <div className="text-sm mt-3 bg-gray-50 p-4 rounded-lg max-w-md mx-auto text-left">
+                <p className="font-semibold text-gray-700 mb-1">สิ่งที่ต้องตรวจสอบ:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>ใน Sheet <b>"Data"</b> มีคอลัมน์ชื่อ <code>username</code> หรือไม่?</li>
+                  <li>ในแถวข้อมูล ช่อง username เขียนว่า <b>"{user?.username}"</b> ตรงกันเป๊ะๆ หรือไม่? (ระวังช่องว่าง)</li>
+                </ul>
+              </div>
             </div>
           )}
         </div>
