@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, User, Database, ArrowRight, Table, AlertCircle, LogOut, UserCircle } from 'lucide-react';
+import { Lock, User, Database, ArrowRight, Table, AlertCircle, LogOut, UserCircle, Loader2 } from 'lucide-react';
 
 // ==========================================
 // ⚠️ ส่วนที่ต้องแก้ไข (CONFIGURATION) ⚠️
@@ -12,10 +12,10 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz_VqXHaCIG2E
 
 export default function App() {
   const [view, setView] = useState('login'); // login, dashboard
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);     // Loading ตอน Login
+  const [dataLoading, setDataLoading] = useState(false); // Loading ตอนดึงข้อมูล
   const [error, setError] = useState('');
   
-  // State สำหรับฟอร์ม (ไม่ต้องมี scriptUrl แล้ว เพราะใช้ค่าคงที่ด้านบน)
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   
@@ -28,7 +28,6 @@ export default function App() {
     setError('');
     setLoading(true);
 
-    // ตรวจสอบว่าใส่ URL ในโค้ดหรือยัง
     if (!GOOGLE_SCRIPT_URL) {
       setError('⚠️ ยังไม่ได้ใส่ URL ในโค้ด: กรุณาแก้ไขบรรทัดที่ 8 ของไฟล์ App.jsx');
       setLoading(false);
@@ -54,6 +53,7 @@ export default function App() {
         const userData = { name: result.name, username: username };
         setUser(userData);
         setView('dashboard');
+        // เรียกดึงข้อมูลต่อทันที
         fetchData(userData.username); 
       } else {
         setError(result.message || 'เข้าสู่ระบบไม่สำเร็จ');
@@ -71,6 +71,7 @@ export default function App() {
     const userToFetch = currentUsername || user?.username;
     if (!userToFetch || !GOOGLE_SCRIPT_URL) return;
 
+    setDataLoading(true); // เริ่มหมุน Loading
     try {
       const response = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
@@ -86,6 +87,8 @@ export default function App() {
       }
     } catch (err) {
       console.error("Failed to fetch data", err);
+    } finally {
+      setDataLoading(false); // หยุดหมุนเมื่อเสร็จ
     }
   };
 
@@ -107,7 +110,7 @@ export default function App() {
             <div className="mx-auto bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mb-4 backdrop-blur-sm">
               <Database className="text-white w-8 h-8" />
             </div>
-            <h2 className="text-2xl font-bold text-white">ระบบสมาชิก (Private)</h2>
+            <h2 className="text-2xl font-bold text-white">ระบบสมาชิก</h2>
             <p className="text-indigo-200 text-sm mt-1">เข้าสู่ระบบเพื่อดูข้อมูลของคุณ</p>
           </div>
 
@@ -160,7 +163,10 @@ export default function App() {
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {loading ? (
-                <span className="animate-pulse">กำลังตรวจสอบ...</span>
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" /> 
+                  กำลังตรวจสอบ...
+                </>
               ) : (
                 <>
                   เข้าสู่ระบบ <ArrowRight className="w-5 h-5" />
@@ -212,14 +218,22 @@ export default function App() {
           </div>
           <button 
             onClick={() => fetchData(user?.username)}
-            className="text-sm text-indigo-600 hover:text-indigo-800 font-medium bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm hover:bg-gray-50 transition-all"
+            disabled={dataLoading}
+            className="text-sm text-indigo-600 hover:text-indigo-800 font-medium bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm hover:bg-gray-50 transition-all flex items-center gap-2"
           >
-            รีเฟรชข้อมูล
+             {dataLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+             รีเฟรชข้อมูล
           </button>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden min-h-[300px]">
-          {sheetData.length > 0 ? (
+          {dataLoading ? (
+            <div className="flex flex-col items-center justify-center h-[300px] text-gray-500">
+               <Loader2 className="w-10 h-10 animate-spin text-indigo-600 mb-3" />
+               <p className="font-medium">กำลังดึงข้อมูลจาก Google Sheets...</p>
+               <p className="text-xs text-gray-400 mt-1">กรุณารอสักครู่</p>
+            </div>
+          ) : sheetData.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
